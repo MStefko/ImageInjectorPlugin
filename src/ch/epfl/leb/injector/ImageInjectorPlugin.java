@@ -7,6 +7,8 @@ package ch.epfl.leb.injector;
 
 import org.micromanager.PropertyMap;
 import org.micromanager.Studio;
+import org.micromanager.data.Coords;
+import org.micromanager.data.Datastore;
 import org.micromanager.data.Image;
 import org.micromanager.data.Processor;
 import org.micromanager.data.ProcessorPlugin;
@@ -107,23 +109,68 @@ class InjectorFactory implements ProcessorFactory {
     public Processor createProcessor() {
         return new InjectorProcessor(app);
     }
-    
 }
 
 class InjectorProcessor extends Processor {
     private final Studio app;
     int counter = 0;
+    private ImageFactory factory;
     
     public InjectorProcessor(Studio studio) {
         super();
         app = studio;
+        factory = new ImageFactory(studio);
 }
 
     @Override
     public void processImage(Image image, ProcessorContext pc) {
         counter++;
         app.logs().logMessage(String.format(
-                "Would process image no. %d. Just sending it along.", counter));
-        pc.outputImage(image);
+                "Would process image no. %d.", counter));
+        app.logs().logMessage(String.format(
+                "%d images left in buffer.", factory.getNoOfLeftImages()));
+        pc.outputImage(factory.getRotatedImage());
+    }
+}
+
+class ImageFactory {
+    private final Studio app;
+    private Datastore store;
+    private CoordsList coords_list;
+    private int img_count = 0;
+    
+    public ImageFactory(Studio studio) {
+        app = studio;
+        try {
+            store = app.data().loadData("C:\\aest.tif", false);
+        } catch (java.io.IOException ex) {
+            app.logs().showMessage("Failed to load tif file.");
+        }
+        coords_list = new CoordsList(store.getUnorderedImageCoords());
+    }
+    
+    public int getNoOfLeftImages() {
+        return store.getNumImages();
+    }
+    
+    public Image anyImage() {
+        return store.getAnyImage();
+    }
+    
+    public Image getRotatedImage() {
+        img_count++;
+        if (img_count >= coords_list.size()) {
+            img_count = 0;
+        }
+        return store.getImage(coords_list.get(img_count));
+    }
+}
+
+class CoordsList extends java.util.ArrayList<Coords> {
+    public CoordsList(java.lang.Iterable<Coords> iter) {
+        super();
+        for (Coords item: iter) {
+            this.add(item);
+        }
     }
 }
