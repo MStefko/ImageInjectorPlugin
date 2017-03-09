@@ -10,6 +10,12 @@
 <project name="ImageInjectorPlugin" default="default" basedir=".">
     <description>Builds, tests, and runs the project ImageInjectorPlugin.</description>
     <import file="nbproject/build-impl.xml"/>
+    
+    <property name="pluginsDir"  location="C:\Program Files\Micro-Manager-2.0beta\mmplugins" />
+       <target name="-post-jar">
+       <echo message="--Copied MM plugin JAR to basedir: ${basedir}" />
+       <copy file="${basedir}/${dist.jar}" toDir="${pluginsDir}" />
+       </target>
     <!--
 
     There exist several targets which are by default empty and which can be 
