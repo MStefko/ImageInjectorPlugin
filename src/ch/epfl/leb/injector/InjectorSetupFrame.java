@@ -27,8 +27,10 @@ import javax.swing.JFileChooser;
 import java.io.File;
 import org.micromanager.PropertyMap;
 /**
+ * 
+ * Settings GUI for ImageInjectorPlugin.
  *
- * @author stefko
+ * @author Marcel Stefko
  */
 public class InjectorSetupFrame extends javax.swing.JDialog {
 
@@ -39,11 +41,12 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
     InjectorConfigurator configurator;
     File tiff_file;
     public InjectorSetupFrame(java.awt.Frame parent, boolean modal, 
-            InjectorConfigurator in_configurator) {
+            InjectorConfigurator configurator) {
         super(parent, modal);
-        configurator = in_configurator;
+        this.configurator = configurator;
         builder = configurator.getSettings().copy();
         initComponents();
+        // load up current value of FPS from ImageStreamer
         frames_per_second.setText(String.valueOf(configurator.context.streamer.getFPS()));
     }
 
@@ -135,6 +138,7 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void OK_buttonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_OK_buttonMouseClicked
+        // Load the FPS value into ImageStreamer
         long FPS;
         try {
             FPS = Long.parseLong(frames_per_second.getText());
@@ -142,22 +146,24 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
             configurator.context.app.logs().showError("Wrong input format.");
             return;
         }
-        this.setVisible(false);
         configurator.context.streamer.setFPS(FPS);
+        // Set updated PropertyMap in configurator
         configurator.setPropertyMap(builder.build());
+        // Hide the GUI and load the new .tiff file into ImageStreamer
+        this.setVisible(false);
         configurator.context.streamer.setFile(tiff_file);
     }//GEN-LAST:event_OK_buttonMouseClicked
 
     private void choose_file_buttonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_choose_file_buttonMouseClicked
-        String filepath = "";
+        // File chooser dialog
         JFileChooser fc = new JFileChooser();
         int returnVal = fc.showOpenDialog(choose_file_button);
         if  (returnVal != JFileChooser.APPROVE_OPTION) {
             return;
         }
+        // Set the selected file and show in label
         tiff_file = fc.getSelectedFile();
-        filepath = tiff_file.getAbsolutePath();
-        label_filepath.setText(filepath);
+        label_filepath.setText(tiff_file.getAbsolutePath());
         
     }//GEN-LAST:event_choose_file_buttonMouseClicked
 

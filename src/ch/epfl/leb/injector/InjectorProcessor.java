@@ -31,29 +31,37 @@ import org.micromanager.data.Processor;
 import org.micromanager.data.ProcessorContext;
 
 /**
+ * Replaces images from camera in the pipeline with images from ImageStreamer.
  *
- * @author stefko
+ * @author Marcel Stefko
  */
 public class InjectorProcessor extends Processor {
-    private InjectorContext context;
-    private PropertyMap property_map;
+    private final InjectorContext context;
+    private final PropertyMap property_map;
+    private final ImageStreamer image_streamer;
+    
     int counter = 0;
     private Image current_image;
-    private final ImageStreamer image_factory;
-    
     private long last_time;
     
     public InjectorProcessor(PropertyMap pm, InjectorContext context) {
         super();
         this.context = context;
         property_map = pm;
-        image_factory = context.streamer;
+        image_streamer = context.streamer;
+        // Used for real FPS calculation
         last_time = System.currentTimeMillis();
 }
 
     @Override
     public void processImage(Image image, ProcessorContext pc) {
+        /**
+         * Recieves image from pipeline, asks for an image from ImageStreamer,
+         * and puts this new image into the pipeline. The original image is
+         * discarded.
+         */
         counter++;
+        // Output real FPS information into log
         if (counter % 100 == 0) {
             long time = System.currentTimeMillis() - last_time;
             double FPS = 100000.0 / (double) time;
@@ -61,10 +69,13 @@ public class InjectorProcessor extends Processor {
             last_time = System.currentTimeMillis();
         }
         try {
-            current_image = image_factory.getRotatedImage();
+            // Get image from streamer
+            current_image = image_streamer.getNextImage();
+            // If null, put in original image
             if (current_image == null) {
                 pc.outputImage(image);
                 return;
+            // Otherwise, replace the image
             } else {
                 pc.outputImage(current_image);
                 return;

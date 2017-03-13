@@ -38,8 +38,11 @@ import org.micromanager.data.Image;
 import org.micromanager.data.Metadata;
 
 /**
+ * 
+ * Handles opening and parsing of images and providing them on demand to
+ * the InjectorProcessor.
  *
- * @author stefko
+ * @author Marcel Stefko
  */
 public class ImageStreamer {
     private final Studio app;
@@ -52,21 +55,24 @@ public class ImageStreamer {
     private long now;
     
     public ImageStreamer(Studio studio) {
+        // Initiate with no file and default FPS
         app = studio;
         setFile(null);
         setFPS(10);
     }
     
     public final void setFile(File file) {
-        // clean up memory
+        // Clean up memory if no file inserted
         if (file == null) {
             tiff_file = null;
             store = null;
             coords_list = null;
             System.gc();
             return;
+        // Do nothing if the file is the same
         } else if (file.getAbsolutePath().equals(tiff_file.getAbsolutePath())) {
             return;
+        // Clean up memory and load up new image otherwise
         } else {
             tiff_file = null;
             store = null;
@@ -77,36 +83,54 @@ public class ImageStreamer {
     }
     
     public final void loadScrubbedData(File file) {
+        /**
+         * Loads data from a .tiff file from disk, scrubs the Coords and
+         * Metadata information, and loads it up into a RAM datastore.
+         */
         Datastore disk_store = null;
         tiff_file = file;
         try {
+            // Load as virtual (images are loaded on-demand)
             disk_store = app.data().loadData(file.getAbsolutePath(), true);
         } catch (IOException ex) {
             Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
             app.logs().showMessage("Failed to load tiff file.");
             return;
         }
+        // Containers for cleaned up final data
         store = app.data().createRAMDatastore();
         coords_list = new SortedCoordsList();
         
+        // Get metadata from .tiff file, but scrub the position and other information
+        // which doesn't pertain to actual image.
         Metadata.MetadataBuilder m_builder = disk_store.getAnyImage().getMetadata().copy();
         m_builder.imageNumber(0l).camera("ImageInjector").exposureMs(1.0d)
                 .xPositionUm(0.0).yPositionUm(0.0).zPositionUm(0.0)
                 .positionName("Injection");
         
+        // Get a coords builder, but scrap all coords info.
         Coords.CoordsBuilder c_builder = disk_store.getAnyImage().getCoords().copy();
         c_builder.channel(0).stagePosition(0).time(0).z(0);
+        
+        // Create a sorted list (of old Coord values) so we can load the images
+        // in a smart order.
         SortedCoordsList c_list = new SortedCoordsList(disk_store.getUnorderedImageCoords());
         
+        // Load the images one by one, replace Coords and Metadata with new
+        // values, and put them into final containers.
         Image disk_image;
         Image ram_image;
         Coords coords; Metadata metadata;
+        // Iterate over ordered list
         for (int i=0; i<c_list.size(); i++) {
+            // get immutable types from builders
             coords = c_builder.build();
             metadata = m_builder.build();
             
+            // get old image, and make a copy with new coords and metadata
             disk_image = disk_store.getImage(c_list.get(i));
             ram_image = disk_image.copyWith(coords, metadata);
+            // put the image into new datastore
             try {
                 store.putImage(ram_image);
             } catch (DatastoreFrozenException ex) {
@@ -116,10 +140,13 @@ public class ImageStreamer {
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
             }
+            // put the relevant coords into an ordered array
             coords_list.add(coords);
             
+            // Prepare builders for next image by incrementing values
             c_builder.offset("time", (int) frameLengthMs);
             m_builder.imageNumber((long) i).elapsedTimeMs((double) i*frameLengthMs);
+            // Log the process
             if (i%100==0) {
                 app.logs().logDebugMessage(String.format("Loaded %d images.",i));
             }
@@ -127,55 +154,73 @@ public class ImageStreamer {
     }
     
     public final long getFPS() {
+        // This rounds down to the nearest integer
         return 1000 / frameLengthMs;
     }
     
     public final void setFPS(long framesPerSecond) {
+        // Again, rounds down to nearest integer
         frameLengthMs = 1000 / framesPerSecond;
-        try {
+        // Log the value so we can see the leftover.
         app.logs().logMessage(String.format(
             "Set ImageFactory frameLengthMs to %d from %d FPS. (%d leftover)", 
-            frameLengthMs, framesPerSecond, frameLengthMs % framesPerSecond));
-        } catch (NullPointerException ex) {
-            Logger.getLogger(InjectorProcessor.class.getName()).log(Level.SEVERE, null, ex);
-        }
+            frameLengthMs, framesPerSecond, 1000 % framesPerSecond));
     }
     
     public int getNoOfImages() {
         return store.getNumImages();
     }
     
-    public Image getRotatedImage() throws InterruptedException {
+    public Image getNextImage() throws InterruptedException {
+        /**
+         * Continuously returns references to images from store,
+         * (when it comes to the end, it starts over).
+         * 
+         * This function does not return copies, only references!
+         */
         if (store == null) { return null; }
+        // Get time for FPS limiter
         now = System.currentTimeMillis();
+        // If not enough time has elapsed since last return, sleep for the
+        // duration missing.
         long diff = frameLengthMs - (now - lastFrameTimeMs);
         if (diff > 0) {
             Thread.sleep(diff);
         }
+        // Increment (and rotate) the counter
         img_count++;
         if (img_count >= coords_list.size()) {
             img_count = 0;
         }
+        // Get timestamp for FPS limiter
         lastFrameTimeMs = System.currentTimeMillis();
+        // Return image from store
         return store.getImage(coords_list.get(img_count));
     }
 }
 
 class SortedCoordsList extends java.util.ArrayList<Coords> {
+    /**
+     * Takes in a Coords iterable from Datastore, sorts it,
+     * and turns it into a list.
+     */
     public SortedCoordsList() {
+        // Empty constructor, create an empty list.
         super();
     }
     
     public SortedCoordsList(java.lang.Iterable<Coords> iter) {
         super();
+        // Just add the unordered coords into the list
         for (Coords item: iter) {
             this.add(item);
         }
+        // Sort the list using the CoordsComparator
         Collections.sort(this, SortedCoordsList.CoordsComparator);
     }
     
     private static final Comparator<Coords> CoordsComparator = new Comparator<Coords>() {
-
+        // Compare the String outputs of Coords.toString method.
         @Override
         public int compare(Coords o1, Coords o2) {
             return o1.toString().compareTo(o2.toString());

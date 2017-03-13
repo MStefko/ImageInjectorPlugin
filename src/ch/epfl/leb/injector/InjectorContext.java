@@ -27,8 +27,11 @@ package ch.epfl.leb.injector;
 import org.micromanager.PropertyMap;
 import org.micromanager.Studio;
 /**
+ * 
+ * Encapsulates often-accessed singletons of this plugin so we don't have to 
+ * pass them to all classes one-by-one.
  *
- * @author stefko
+ * @author Marcel Stefko
  */
 public class InjectorContext {
     public final Studio app;

@@ -32,8 +32,11 @@ import org.scijava.plugin.SciJavaPlugin;
 import org.scijava.plugin.Plugin;
 
 /**
+ * ProcessorPlugin for MicroManager API version 2.0,
+ * which replaces images from the camera with a stream of images from a .tif
+ * stack.
  *
- * @author stefko
+ * @author Marcel Stefko
  */
 @Plugin(type = ProcessorPlugin.class)
 public class ImageInjectorPlugin implements 

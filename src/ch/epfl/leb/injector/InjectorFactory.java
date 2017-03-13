@@ -28,11 +28,15 @@ import org.micromanager.data.Processor;
 import org.micromanager.data.ProcessorFactory;
 
 /**
+ * 
+ * Generates InjectorProcessors for every stream. However, all processors
+ * draw images from the same ImageStreamer (a single .tiff file in first-come
+ * first-serve fashion).
  *
- * @author stefko
+ * @author Marcel Stefko
  */
 public class InjectorFactory implements ProcessorFactory {
-    private InjectorContext context;
+    private final InjectorContext context;
     private PropertyMap property_map;
     public InjectorFactory(PropertyMap pm, InjectorContext context) {
         super();

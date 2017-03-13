@@ -28,8 +28,11 @@ import org.micromanager.Studio;
 import org.micromanager.data.ProcessorConfigurator;
 
 /**
+ * 
+ * Opens up a GUI, modifies the ImageStreamer singleton according to settings, 
+ * and is used to set up the PropertyMap for InjectorFactory.
  *
- * @author stefko
+ * @author Marcel Stefko
  */
 public class InjectorConfigurator implements ProcessorConfigurator {
     public InjectorContext context;
