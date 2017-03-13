@@ -126,7 +126,7 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
         builder.putInt("framesPerSecond", FPS);
         PropertyMap pm = builder.build();
         configurator.setPropertyMap(pm);
-        configurator.getPlugin().getImageFactory(pm).setFile(tiff_file);
+        configurator.context.plugin.getImageStreamer().setFile(tiff_file);
         this.setVisible(false);
     }//GEN-LAST:event_OK_buttonMouseClicked
 
