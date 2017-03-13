@@ -22,10 +22,6 @@ public class InjectorFactory implements ProcessorFactory {
         this.context = context;
     }
     
-    public ImageInjectorPlugin getPlugin() {
-        return context.plugin;
-    }
-    
     @Override
     public Processor createProcessor() {
         return new InjectorProcessor(property_map, context);

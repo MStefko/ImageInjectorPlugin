@@ -30,15 +30,6 @@ public class InjectorConfigurator implements ProcessorConfigurator {
         property_map = pm;
     }
     
-    public Studio getApp() {
-        return context.app;
-    }
-    
-    public ImageInjectorPlugin getPlugin() {
-        return context.plugin;
-    }
-    
-    
     @Override
     public void showGUI() {
         frame.setVisible(true);

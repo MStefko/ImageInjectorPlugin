@@ -26,6 +26,7 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
         configurator = in_configurator;
         builder = configurator.getSettings().copy();
         initComponents();
+        frames_per_second.setText(String.valueOf(configurator.context.streamer.getFPS()));
     }
 
     /**
@@ -49,7 +50,7 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
         jLabel1.setText("Frames per second:");
 
         frames_per_second.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
-        frames_per_second.setText("100");
+        frames_per_second.setText("50");
         frames_per_second.setPreferredSize(new java.awt.Dimension(30, 20));
 
         OK_button.setText("OK");
@@ -77,13 +78,10 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(65, 65, 65)
-                        .addComponent(OK_button))
-                    .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
                         .addComponent(jLabel2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(label_filepath))
+                        .addComponent(label_filepath, javax.swing.GroupLayout.PREFERRED_SIZE, 208, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -91,8 +89,11 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
                                 .addComponent(jLabel1)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(frames_per_second, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(choose_file_button))))
-                .addContainerGap(112, Short.MAX_VALUE))
+                            .addComponent(choose_file_button)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(97, 97, 97)
+                        .addComponent(OK_button)))
+                .addContainerGap(86, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -107,27 +108,26 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
                     .addComponent(label_filepath))
-                .addGap(14, 14, 14)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(OK_button)
-                .addGap(22, 22, 22))
+                .addGap(25, 25, 25))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
     private void OK_buttonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_OK_buttonMouseClicked
-        int FPS;
+        long FPS;
         try {
-            FPS = Integer.parseInt(frames_per_second.getText());
+            FPS = Long.parseLong(frames_per_second.getText());
         } catch (NumberFormatException ex) {
-            configurator.getApp().logs().showError("Wrong input format.");
+            configurator.context.app.logs().showError("Wrong input format.");
             return;
         }
-        builder.putInt("framesPerSecond", FPS);
-        PropertyMap pm = builder.build();
-        configurator.setPropertyMap(pm);
-        configurator.context.plugin.getImageStreamer().setFile(tiff_file);
         this.setVisible(false);
+        configurator.context.streamer.setFPS(FPS);
+        configurator.setPropertyMap(builder.build());
+        configurator.context.streamer.setFile(tiff_file);
     }//GEN-LAST:event_OK_buttonMouseClicked
 
     private void choose_file_buttonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_choose_file_buttonMouseClicked

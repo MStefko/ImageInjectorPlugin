@@ -24,14 +24,8 @@ public class ImageInjectorPlugin implements
 
     public static final String menuName = "CameraInjector";
     private Studio app;
-    private final ImageStreamer streamer;
-    private final InjectorContext context;
-    
-    public ImageInjectorPlugin() {
-        super();
-        streamer = new ImageStreamer(app);
-        context = new InjectorContext(app, this, streamer);
-    }
+    private ImageStreamer streamer;
+    private InjectorContext context;
     
     public ImageStreamer getImageStreamer() {
         return streamer;
@@ -50,6 +44,8 @@ public class ImageInjectorPlugin implements
     @Override
     public void setContext(Studio studio) {
         app = studio;
+        streamer = new ImageStreamer(app);
+        context = new InjectorContext(app, this, streamer);
     }
     
     @Override

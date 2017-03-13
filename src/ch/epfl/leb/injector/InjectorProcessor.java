@@ -20,31 +20,40 @@ public class InjectorProcessor extends Processor {
     private InjectorContext context;
     private PropertyMap property_map;
     int counter = 0;
+    private Image current_image;
     private final ImageStreamer image_factory;
+    
+    private long last_time;
     
     public InjectorProcessor(PropertyMap pm, InjectorContext context) {
         super();
         this.context = context;
         property_map = pm;
         image_factory = context.streamer;
+        last_time = System.currentTimeMillis();
 }
 
     @Override
     public void processImage(Image image, ProcessorContext pc) {
         counter++;
-        context.app.logs().logMessage(String.format(
-                    "Would process image no. %d.", counter));
+        if (counter % 100 == 0) {
+            long time = System.currentTimeMillis() - last_time;
+            double FPS = 100000.0 / (double) time;
+            context.app.logs().logDebugMessage(String.format("100 images processed in %d milliseconds. (%4.2f FPS)", time, FPS));
+            last_time = System.currentTimeMillis();
+        }
         try {
-            Image out = image_factory.getRotatedImage();
-            if (out == null) {
+            current_image = image_factory.getRotatedImage();
+            if (current_image == null) {
                 pc.outputImage(image);
                 return;
             } else {
-                pc.outputImage(image_factory.getRotatedImage());
+                pc.outputImage(current_image);
                 return;
             }
         } catch (InterruptedException ex) {
             Logger.getLogger(InjectorProcessor.class.getName()).log(Level.SEVERE, null, ex);
         }
+        
     }
 }
