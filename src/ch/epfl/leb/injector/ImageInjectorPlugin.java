@@ -17,6 +17,10 @@ import org.micromanager.data.ProcessorContext;
 import org.micromanager.data.ProcessorFactory;
 import org.scijava.plugin.SciJavaPlugin;
 import org.scijava.plugin.Plugin;
+import java.util.Comparator;
+import java.util.Collections;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -75,8 +79,18 @@ class InjectorConfigurator implements ProcessorConfigurator {
     private final Studio app;
 
     public InjectorConfigurator(PropertyMap pm, Studio studio) {
-        property_map = pm;
+        PropertyMap.PropertyMapBuilder builder = pm.copy();
+        builder.putInt("framesPerSecond", 15);
+        setPropertyMap(builder.build());
         app = studio;
+    }
+    
+    public void setPropertyMap(PropertyMap pm) {
+        property_map = pm;
+    }
+    
+    public PropertyMap getPropertyMap() {
+        return property_map;
     }
     
     @Override
@@ -107,46 +121,63 @@ class InjectorFactory implements ProcessorFactory {
     
     @Override
     public Processor createProcessor() {
-        return new InjectorProcessor(app);
+        return new InjectorProcessor(property_map, app);
     }
 }
 
 class InjectorProcessor extends Processor {
+    private PropertyMap property_map;
     private final Studio app;
     int counter = 0;
     private ImageFactory factory;
     
-    public InjectorProcessor(Studio studio) {
+    public InjectorProcessor(PropertyMap pm, Studio studio) {
         super();
         app = studio;
-        factory = new ImageFactory(studio);
+        property_map = pm;
+        factory = new ImageFactory(property_map, app);
 }
 
     @Override
     public void processImage(Image image, ProcessorContext pc) {
         counter++;
         app.logs().logMessage(String.format(
-                "Would process image no. %d.", counter));
-        app.logs().logMessage(String.format(
-                "%d images left in buffer.", factory.getNoOfLeftImages()));
-        pc.outputImage(factory.getRotatedImage());
+                    "Would process image no. %d.", counter));
+        try {
+            pc.outputImage(factory.getRotatedImage());
+        } catch (InterruptedException ex) {
+            Logger.getLogger(InjectorProcessor.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 }
 
 class ImageFactory {
     private final Studio app;
+    private PropertyMap property_map;
     private Datastore store;
     private CoordsList coords_list;
     private int img_count = 0;
+    private long lastFrameTimeMs = 0l;
+    private long frameLengthMs = 10;
+    private long now;
     
-    public ImageFactory(Studio studio) {
+    public ImageFactory(PropertyMap pm, Studio studio) {
         app = studio;
+        property_map = pm;
         try {
             store = app.data().loadData("C:\\aest.tif", false);
         } catch (java.io.IOException ex) {
             app.logs().showMessage("Failed to load tif file.");
         }
         coords_list = new CoordsList(store.getUnorderedImageCoords());
+        setFramesPerSecond(property_map.getInt("framesPerSecond"));
+    }
+    
+    public void setFramesPerSecond(int framesPerSecond) {
+        frameLengthMs = 1000 / framesPerSecond;
+        app.logs().logMessage(String.format(
+            "Set ImageFactory frameLengthMs to %d from %d FPS. (%d leftover)", 
+            frameLengthMs, framesPerSecond, frameLengthMs % framesPerSecond));
     }
     
     public int getNoOfLeftImages() {
@@ -157,11 +188,17 @@ class ImageFactory {
         return store.getAnyImage();
     }
     
-    public Image getRotatedImage() {
+    public Image getRotatedImage() throws InterruptedException {
+        now = System.currentTimeMillis();
+        long diff = frameLengthMs - (now - lastFrameTimeMs);
+        if (diff > 0) {
+            Thread.sleep(diff);
+        }
         img_count++;
         if (img_count >= coords_list.size()) {
             img_count = 0;
         }
+        lastFrameTimeMs = System.currentTimeMillis();
         return store.getImage(coords_list.get(img_count));
     }
 }
@@ -172,5 +209,15 @@ class CoordsList extends java.util.ArrayList<Coords> {
         for (Coords item: iter) {
             this.add(item);
         }
+        Collections.sort(this, CoordsList.CoordsComparator);
     }
+    
+    private static Comparator<Coords> CoordsComparator = new Comparator<Coords>() {
+
+        @Override
+        public int compare(Coords o1, Coords o2) {
+            return o1.toString().compareTo(o2.toString());
+        }
+        
+    };
 }
