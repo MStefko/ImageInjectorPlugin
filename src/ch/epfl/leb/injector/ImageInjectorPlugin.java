@@ -5,6 +5,7 @@
  */
 package ch.epfl.leb.injector;
 
+import java.io.File;
 import org.micromanager.PropertyMap;
 import org.micromanager.Studio;
 import org.micromanager.data.Coords;
@@ -33,16 +34,23 @@ public class ImageInjectorPlugin implements
 
     public static final String menuName = "CameraInjector";
     private Studio app;
-    private ProcessorFactory factory;
+    private ImageFactory image_factory = null;
+    
+    public ImageFactory getImageFactory(PropertyMap pm) {
+        if (image_factory == null) {
+            image_factory = new ImageFactory(pm, app);
+        }
+        return image_factory;
+    }
     
     @Override
     public ProcessorConfigurator createConfigurator(PropertyMap pm) {
-        return new InjectorConfigurator(pm, app);
+        return new InjectorConfigurator(pm, app, this);
     }
 
     @Override
     public ProcessorFactory createFactory(PropertyMap pm) {
-        return new InjectorFactory(pm, app);
+        return new InjectorFactory(pm, app, this);
     }
 
     @Override
@@ -69,7 +77,7 @@ public class ImageInjectorPlugin implements
 
     @Override
     public String getCopyright() {
-        return "No licence. Don't use this, it's not good.";
+        return "No licence. Don't use this, it's no good.";
     }
     
 }
@@ -77,25 +85,34 @@ public class ImageInjectorPlugin implements
 class InjectorConfigurator implements ProcessorConfigurator {
     private PropertyMap property_map;
     private final Studio app;
+    private final ImageInjectorPlugin plugin;
+    private InjectorSetupFrame frame;
 
-    public InjectorConfigurator(PropertyMap pm, Studio studio) {
+    public InjectorConfigurator(PropertyMap pm, Studio studio, ImageInjectorPlugin plugin) {
         PropertyMap.PropertyMapBuilder builder = pm.copy();
         builder.putInt("framesPerSecond", 15);
         setPropertyMap(builder.build());
         app = studio;
+        this.plugin = plugin;
+        frame = new InjectorSetupFrame(new javax.swing.JFrame(), true, this);
     }
     
     public void setPropertyMap(PropertyMap pm) {
         property_map = pm;
     }
     
-    public PropertyMap getPropertyMap() {
-        return property_map;
+    public Studio getApp() {
+        return app;
     }
+    
+    public ImageInjectorPlugin getPlugin() {
+        return plugin;
+    }
+    
     
     @Override
     public void showGUI() {
-        app.logs().showMessage("This is supposed to be the GUI.");
+        frame.setVisible(true);
     }
 
     @Override
@@ -114,14 +131,21 @@ class InjectorConfigurator implements ProcessorConfigurator {
 class InjectorFactory implements ProcessorFactory {
     private PropertyMap property_map;
     private final Studio app;
-    public InjectorFactory(PropertyMap pm, Studio studio) {
+    private final ImageInjectorPlugin plugin;
+    public InjectorFactory(PropertyMap pm, Studio studio, ImageInjectorPlugin plugin) {
+        super();
         property_map = pm;
         app = studio;
+        this.plugin = plugin;
+    }
+    
+    public ImageInjectorPlugin getPlugin() {
+        return plugin;
     }
     
     @Override
     public Processor createProcessor() {
-        return new InjectorProcessor(property_map, app);
+        return new InjectorProcessor(property_map, app, this);
     }
 }
 
@@ -129,13 +153,15 @@ class InjectorProcessor extends Processor {
     private PropertyMap property_map;
     private final Studio app;
     int counter = 0;
-    private ImageFactory factory;
+    private final ImageFactory image_factory;
+    private final InjectorFactory parent_factory;
     
-    public InjectorProcessor(PropertyMap pm, Studio studio) {
+    public InjectorProcessor(PropertyMap pm, Studio studio, InjectorFactory fc) {
         super();
         app = studio;
         property_map = pm;
-        factory = new ImageFactory(property_map, app);
+        parent_factory = fc;
+        image_factory = parent_factory.getPlugin().getImageFactory(pm);
 }
 
     @Override
@@ -144,7 +170,14 @@ class InjectorProcessor extends Processor {
         app.logs().logMessage(String.format(
                     "Would process image no. %d.", counter));
         try {
-            pc.outputImage(factory.getRotatedImage());
+            Image out = image_factory.getRotatedImage();
+            if (out == null) {
+                pc.outputImage(image);
+                return;
+            } else {
+                pc.outputImage(image_factory.getRotatedImage());
+                return;
+            }
         } catch (InterruptedException ex) {
             Logger.getLogger(InjectorProcessor.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -153,6 +186,7 @@ class InjectorProcessor extends Processor {
 
 class ImageFactory {
     private final Studio app;
+    private File tiff_file;
     private PropertyMap property_map;
     private Datastore store;
     private CoordsList coords_list;
@@ -164,16 +198,30 @@ class ImageFactory {
     public ImageFactory(PropertyMap pm, Studio studio) {
         app = studio;
         property_map = pm;
-        try {
-            store = app.data().loadData("C:\\aest.tif", false);
-        } catch (java.io.IOException ex) {
-            app.logs().showMessage("Failed to load tif file.");
-        }
-        coords_list = new CoordsList(store.getUnorderedImageCoords());
-        setFramesPerSecond(property_map.getInt("framesPerSecond"));
+        setFile(null);
+        setFramesPerSecond(property_map.getInt("framesPerSecond", 10));
     }
     
-    public void setFramesPerSecond(int framesPerSecond) {
+    public final void setFile(File file) {
+        // clean up memory
+        tiff_file = null;
+        store = null;
+        coords_list = null;
+        System.gc();
+        if (file == null) {
+            return;
+        }
+        try {
+            Datastore new_store = app.data().loadData(file.getAbsolutePath(), false);
+            tiff_file = file;
+            store = new_store;
+        } catch (java.io.IOException ex) {
+            app.logs().showMessage("Failed to load tiff file.");
+        }
+        coords_list = new CoordsList(store.getUnorderedImageCoords());
+    }
+    
+    public final void setFramesPerSecond(int framesPerSecond) {
         frameLengthMs = 1000 / framesPerSecond;
         app.logs().logMessage(String.format(
             "Set ImageFactory frameLengthMs to %d from %d FPS. (%d leftover)", 
@@ -184,11 +232,8 @@ class ImageFactory {
         return store.getNumImages();
     }
     
-    public Image anyImage() {
-        return store.getAnyImage();
-    }
-    
     public Image getRotatedImage() throws InterruptedException {
+        if (store == null) { return null; }
         now = System.currentTimeMillis();
         long diff = frameLengthMs - (now - lastFrameTimeMs);
         if (diff > 0) {
@@ -212,7 +257,7 @@ class CoordsList extends java.util.ArrayList<Coords> {
         Collections.sort(this, CoordsList.CoordsComparator);
     }
     
-    private static Comparator<Coords> CoordsComparator = new Comparator<Coords>() {
+    private static final Comparator<Coords> CoordsComparator = new Comparator<Coords>() {
 
         @Override
         public int compare(Coords o1, Coords o2) {

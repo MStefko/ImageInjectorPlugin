@@ -13,7 +13,7 @@
     
     <property name="pluginsDir"  location="C:\Program Files\Micro-Manager-2.0beta\mmplugins" />
        <target name="-post-jar">
-       <echo message="--Copied MM plugin JAR to basedir: ${basedir}" />
+       <echo message="--Copied MM plugin JAR from: ${basedir} to ${pluginsDir}" />
        <copy file="${basedir}/${dist.jar}" toDir="${pluginsDir}" />
        </target>
     <!--
