@@ -43,7 +43,7 @@ public class ImageInjectorPlugin implements
                 org.micromanager.data.ProcessorPlugin,
                 org.scijava.plugin.SciJavaPlugin {
 
-    public static final String menuName = "CameraInjector";
+    public static final String menuName = "ImageInjector";
     private Studio app;
     private ImageStreamer streamer;
     private InjectorContext context;
@@ -76,16 +76,17 @@ public class ImageInjectorPlugin implements
 
     @Override
     public String getHelpText() {
-        return "You must be really desperate, coming to me for help.";
+        return "Replaces images from camera in processing pipeline with " +
+               "ones from chosen .tiff stack.";
     }
 
     @Override
     public String getVersion() {
-        return "0.0.1";
+        return "0.1";
     }
 
     @Override
     public String getCopyright() {
-        return "No licence. Don't use this, it's no good.";
+        return "MIT License, 2017 Marcel Stefko, LEB EPFL";
     }
 }

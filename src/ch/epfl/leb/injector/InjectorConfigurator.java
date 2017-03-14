@@ -37,14 +37,14 @@ import org.micromanager.data.ProcessorConfigurator;
 public class InjectorConfigurator implements ProcessorConfigurator {
     public InjectorContext context;
     private PropertyMap property_map;
-    private InjectorSetupFrame frame;
+    private InjectorSetupWindow frame;
     
     public InjectorConfigurator(PropertyMap pm, InjectorContext context) {
         this.context = context;
         PropertyMap.PropertyMapBuilder builder = pm.copy();
         builder.putInt("framesPerSecond", 15);
         setPropertyMap(builder.build());
-        frame = new InjectorSetupFrame(new javax.swing.JFrame(), true, this);
+        frame = new InjectorSetupWindow(new javax.swing.JFrame(), true, this);
     }
     
     public final void setPropertyMap(PropertyMap pm) {

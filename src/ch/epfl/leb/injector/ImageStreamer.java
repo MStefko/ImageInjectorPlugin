@@ -29,6 +29,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import org.micromanager.Studio;
 import org.micromanager.data.Coords;
 import org.micromanager.data.Datastore;
@@ -61,16 +63,25 @@ public class ImageStreamer {
         setFPS(10);
     }
     
-    public final void setFile(File file) {
+    public final void setFile(final File file) {
+        // The file pointers can be null.
+        String new_path = ""; String old_path = "";
+        try {
+            new_path = file.getAbsolutePath();
+        } catch (NullPointerException ex) {}
+        try {
+            old_path = tiff_file.getAbsolutePath();
+        } catch (NullPointerException ex) {}
+        
         // Clean up memory if no file inserted
-        if (file == null) {
+        if (new_path.equalsIgnoreCase("")) {
             tiff_file = null;
             store = null;
             coords_list = null;
             System.gc();
             return;
         // Do nothing if the file is the same
-        } else if (file.getAbsolutePath().equals(tiff_file.getAbsolutePath())) {
+        } else if (old_path.equals(new_path)) {
             return;
         // Clean up memory and load up new image otherwise
         } else {
@@ -78,80 +89,20 @@ public class ImageStreamer {
             store = null;
             coords_list = null;
             System.gc();
-            loadScrubbedData(file);
+            
+            final TiffParser parser = new TiffParser(app, frameLengthMs);
+            new Thread(new Runnable(){
+                @Override
+                public void run() {
+                    parser.loadScrubbedData(file);
+                    store = parser.getDatastore();
+                    coords_list = parser.getCoordsList();
+                }
+            }).start();
         }
     }
     
-    public final void loadScrubbedData(File file) {
-        /**
-         * Loads data from a .tiff file from disk, scrubs the Coords and
-         * Metadata information, and loads it up into a RAM datastore.
-         */
-        Datastore disk_store = null;
-        tiff_file = file;
-        try {
-            // Load as virtual (images are loaded on-demand)
-            disk_store = app.data().loadData(file.getAbsolutePath(), true);
-        } catch (IOException ex) {
-            Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
-            app.logs().showMessage("Failed to load tiff file.");
-            return;
-        }
-        // Containers for cleaned up final data
-        store = app.data().createRAMDatastore();
-        coords_list = new SortedCoordsList();
-        
-        // Get metadata from .tiff file, but scrub the position and other information
-        // which doesn't pertain to actual image.
-        Metadata.MetadataBuilder m_builder = disk_store.getAnyImage().getMetadata().copy();
-        m_builder.imageNumber(0l).camera("ImageInjector").exposureMs(1.0d)
-                .xPositionUm(0.0).yPositionUm(0.0).zPositionUm(0.0)
-                .positionName("Injection");
-        
-        // Get a coords builder, but scrap all coords info.
-        Coords.CoordsBuilder c_builder = disk_store.getAnyImage().getCoords().copy();
-        c_builder.channel(0).stagePosition(0).time(0).z(0);
-        
-        // Create a sorted list (of old Coord values) so we can load the images
-        // in a smart order.
-        SortedCoordsList c_list = new SortedCoordsList(disk_store.getUnorderedImageCoords());
-        
-        // Load the images one by one, replace Coords and Metadata with new
-        // values, and put them into final containers.
-        Image disk_image;
-        Image ram_image;
-        Coords coords; Metadata metadata;
-        // Iterate over ordered list
-        for (int i=0; i<c_list.size(); i++) {
-            // get immutable types from builders
-            coords = c_builder.build();
-            metadata = m_builder.build();
-            
-            // get old image, and make a copy with new coords and metadata
-            disk_image = disk_store.getImage(c_list.get(i));
-            ram_image = disk_image.copyWith(coords, metadata);
-            // put the image into new datastore
-            try {
-                store.putImage(ram_image);
-            } catch (DatastoreFrozenException ex) {
-                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (DatastoreRewriteException ex) {
-                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalArgumentException ex) {
-                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            // put the relevant coords into an ordered array
-            coords_list.add(coords);
-            
-            // Prepare builders for next image by incrementing values
-            c_builder.offset("time", (int) frameLengthMs);
-            m_builder.imageNumber((long) i).elapsedTimeMs((double) i*frameLengthMs);
-            // Log the process
-            if (i%100==0) {
-                app.logs().logDebugMessage(String.format("Loaded %d images.",i));
-            }
-        }
-    }
+
     
     public final long getFPS() {
         // This rounds down to the nearest integer
@@ -227,4 +178,123 @@ class SortedCoordsList extends java.util.ArrayList<Coords> {
         }
         
     };
+}
+
+class TiffParser {
+    private BusyIndicatorWindow window = new BusyIndicatorWindow(null, true);
+    private Studio app;
+    private File tiff_file;
+    private Datastore store;
+    private SortedCoordsList coords_list;
+    private long frameLengthMs;
+    
+    public TiffParser(Studio studio, long frameLengthMs) {
+        this.frameLengthMs = frameLengthMs;
+        app = studio;
+    }
+    
+    public final void loadScrubbedData(File file) {
+        /**
+         * Loads data from a .tiff file from disk, cleans  the Coords and
+         * Metadata information, and loads it up into a RAM datastore.
+         */
+        
+        
+        Datastore disk_store = null;
+        tiff_file = file;
+        try {
+            // Load as virtual (images are loaded on-demand)
+            disk_store = app.data().loadData(file.getAbsolutePath(), true);
+        } catch (IOException ex) {
+            Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
+            app.logs().showMessage("Failed to load tiff file.");
+            return;
+        }
+        
+        
+        
+        // Containers for cleaned up final data
+        store = app.data().createRAMDatastore();
+        coords_list = new SortedCoordsList();
+        
+        // Get metadata from .tiff file, but scrub the position and other information
+        // which doesn't pertain to actual image.
+        Metadata.MetadataBuilder m_builder = disk_store.getAnyImage().getMetadata().copy();
+        m_builder.imageNumber(0l).camera("ImageInjector").exposureMs(1.0d)
+                .xPositionUm(0.0).yPositionUm(0.0).zPositionUm(0.0)
+                .positionName("Injection");
+        
+        // Get a coords builder, but scrap all coords info.
+        Coords.CoordsBuilder c_builder = disk_store.getAnyImage().getCoords().copy();
+        c_builder.channel(0).stagePosition(0).time(0).z(0);
+        
+        // Create a sorted list (of old Coord values) so we can load the images
+        // in a smart order.
+        final SortedCoordsList c_list = new SortedCoordsList(disk_store.getUnorderedImageCoords());
+        // Set up progressbar
+        window.setMaximum(c_list.size());
+        window.setProgress(0);
+        SwingUtilities.invokeLater( new Runnable() {
+            @Override
+            public void run() {
+                window.setVisible(true);
+            }
+        });
+
+        // Load the images one by one, replace Coords and Metadata with new
+        // values, and put them into final containers.
+        Image disk_image;
+        Image ram_image;
+        Coords coords; Metadata metadata;
+        // Iterate over ordered list
+        for (int i=0; i<c_list.size(); i++) {
+            // get immutable types from builders
+            coords = c_builder.build();
+            metadata = m_builder.build();
+            
+            // get old image, and make a copy with new coords and metadata
+            disk_image = disk_store.getImage(c_list.get(i));
+            ram_image = disk_image.copyWith(coords, metadata);
+            // put the image into new datastore
+            try {
+                store.putImage(ram_image);
+            } catch (DatastoreFrozenException ex) {
+                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (DatastoreRewriteException ex) {
+                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalArgumentException ex) {
+                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            // put the relevant coords into an ordered array
+            coords_list.add(coords);
+            
+            // Prepare builders for next image by incrementing values
+            c_builder.offset("time", (int) frameLengthMs);
+            m_builder.imageNumber((long) i).elapsedTimeMs((double) i*frameLengthMs);
+            // Log the process
+            if (i%100==0) {
+                app.logs().logDebugMessage(String.format("Loaded %d images.",i));
+            }
+            // Increment progressbar
+            SwingUtilities.invokeLater( new Runnable() {
+                public void run() {
+                    window.increment();
+                }
+            });
+
+        }
+        SwingUtilities.invokeLater( new Runnable() {
+                public void run() {
+                    window.dispose();                
+                }
+            });
+    }
+    
+    public Datastore getDatastore() {
+        return store;
+    } 
+    
+    public SortedCoordsList getCoordsList() {
+        return coords_list;
+    }
 }

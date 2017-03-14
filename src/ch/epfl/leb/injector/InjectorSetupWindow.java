@@ -26,21 +26,22 @@ package ch.epfl.leb.injector;
 import javax.swing.JFileChooser;
 import java.io.File;
 import org.micromanager.PropertyMap;
+
 /**
  * 
  * Settings GUI for ImageInjectorPlugin.
  *
  * @author Marcel Stefko
  */
-public class InjectorSetupFrame extends javax.swing.JDialog {
+public class InjectorSetupWindow extends javax.swing.JDialog {
 
     /**
-     * Creates new form InjectorSetupFrame
+     * Creates new form InjectorSetupWindow
      */
     PropertyMap.PropertyMapBuilder builder;
     InjectorConfigurator configurator;
     File tiff_file;
-    public InjectorSetupFrame(java.awt.Frame parent, boolean modal, 
+    public InjectorSetupWindow(java.awt.Frame parent, boolean modal, 
             InjectorConfigurator configurator) {
         super(parent, modal);
         this.configurator = configurator;
@@ -48,6 +49,7 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
         initComponents();
         // load up current value of FPS from ImageStreamer
         frames_per_second.setText(String.valueOf(configurator.context.streamer.getFPS()));
+        setLocationRelativeTo(null);
     }
 
     /**
@@ -184,20 +186,21 @@ public class InjectorSetupFrame extends javax.swing.JDialog {
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(InjectorSetupFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(InjectorSetupWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(InjectorSetupFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(InjectorSetupWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(InjectorSetupFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(InjectorSetupWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(InjectorSetupFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(InjectorSetupWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        //</editor-fold>
         //</editor-fold>
 
         /* Create and display the dialog */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                InjectorSetupFrame dialog = new InjectorSetupFrame(new javax.swing.JFrame(), true, null);
+                InjectorSetupWindow dialog = new InjectorSetupWindow(new javax.swing.JFrame(), true, null);
                 dialog.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
                     public void windowClosing(java.awt.event.WindowEvent e) {
