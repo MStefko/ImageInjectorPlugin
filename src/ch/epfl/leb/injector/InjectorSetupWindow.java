@@ -67,6 +67,7 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
         choose_file_button = new javax.swing.JButton();
         jLabel2 = new javax.swing.JLabel();
         label_filepath = new javax.swing.JLabel();
+        isMMtiff = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
@@ -93,6 +94,10 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
         jLabel2.setText("Current file:");
 
         label_filepath.setText("<none>");
+        label_filepath.setMaximumSize(new java.awt.Dimension(100, 14));
+
+        isMMtiff.setText("is Micromanager Tiff");
+        isMMtiff.setToolTipText("");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -112,7 +117,10 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
                                 .addComponent(jLabel1)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(frames_per_second, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(choose_file_button)))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(choose_file_button)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(isMMtiff))))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(97, 97, 97)
                         .addComponent(OK_button)))
@@ -126,11 +134,13 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
                     .addComponent(jLabel1)
                     .addComponent(frames_per_second, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(choose_file_button)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(choose_file_button)
+                    .addComponent(isMMtiff))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 9, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
-                    .addComponent(label_filepath))
+                    .addComponent(label_filepath, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(OK_button)
                 .addGap(25, 25, 25))
@@ -153,7 +163,7 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
         configurator.setPropertyMap(builder.build());
         // Hide the GUI and load the new .tiff file into ImageStreamer
         this.setVisible(false);
-        configurator.context.streamer.setFile(tiff_file);
+        configurator.context.streamer.setFile(tiff_file, isMMtiff.isSelected());
     }//GEN-LAST:event_OK_buttonMouseClicked
 
     private void choose_file_buttonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_choose_file_buttonMouseClicked
@@ -216,6 +226,7 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
     private javax.swing.JButton OK_button;
     private javax.swing.JButton choose_file_button;
     private javax.swing.JTextField frames_per_second;
+    private javax.swing.JCheckBox isMMtiff;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel label_filepath;

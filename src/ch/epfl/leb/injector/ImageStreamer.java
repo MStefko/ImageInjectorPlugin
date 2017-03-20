@@ -23,6 +23,10 @@
  */
 package ch.epfl.leb.injector;
 
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.io.Opener;
+import ij.process.ImageProcessor;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
@@ -37,6 +41,7 @@ import org.micromanager.data.Datastore;
 import org.micromanager.data.DatastoreFrozenException;
 import org.micromanager.data.DatastoreRewriteException;
 import org.micromanager.data.Image;
+import org.micromanager.data.ImageJConverter;
 import org.micromanager.data.Metadata;
 
 /**
@@ -59,11 +64,11 @@ public class ImageStreamer {
     public ImageStreamer(Studio studio) {
         // Initiate with no file and default FPS
         app = studio;
-        setFile(null);
+        setFile(null, false);
         setFPS(10);
     }
     
-    public final void setFile(final File file) {
+    public final void setFile(final File file, final boolean isMMtiff) {
         // The file pointers can be null.
         String new_path = ""; String old_path = "";
         try {
@@ -94,7 +99,7 @@ public class ImageStreamer {
             new Thread(new Runnable(){
                 @Override
                 public void run() {
-                    parser.loadScrubbedData(file);
+                    parser.loadScrubbedData(file, isMMtiff);
                     store = parser.getDatastore();
                     coords_list = parser.getCoordsList();
                 }
@@ -187,46 +192,21 @@ class TiffParser {
     private Datastore store;
     private SortedCoordsList coords_list;
     private long frameLengthMs;
+    private Coords.CoordsBuilder c_builder;
+    private Metadata.MetadataBuilder m_builder;
     
     public TiffParser(Studio studio, long frameLengthMs) {
         this.frameLengthMs = frameLengthMs;
         app = studio;
     }
     
-    public final void loadScrubbedData(File file) {
-        /**
-         * Loads data from a .tiff file from disk, cleans  the Coords and
-         * Metadata information, and loads it up into a RAM datastore.
-         */
-        
-        
-        Datastore disk_store = null;
-        tiff_file = file;
-        try {
-            // Load as virtual (images are loaded on-demand)
-            disk_store = app.data().loadData(file.getAbsolutePath(), true);
-        } catch (IOException ex) {
-            Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
-            app.logs().showMessage("Failed to load tiff file.");
-            return;
-        }
-        
-        
-        
-        // Containers for cleaned up final data
-        store = app.data().createRAMDatastore();
-        coords_list = new SortedCoordsList();
-        
-        // Get metadata from .tiff file, but scrub the position and other information
-        // which doesn't pertain to actual image.
-        Metadata.MetadataBuilder m_builder = disk_store.getAnyImage().getMetadata().copy();
+    public final void loadMMtiff(File file) throws IOException {
+        app.logs().logMessage("Trying to open MM tiff.");
+        Datastore disk_store = app.data().loadData(file.getAbsolutePath(), true);
+        m_builder = disk_store.getAnyImage().getMetadata().copy();
         m_builder.imageNumber(0l).camera("ImageInjector").exposureMs(1.0d)
                 .xPositionUm(0.0).yPositionUm(0.0).zPositionUm(0.0)
                 .positionName("Injection");
-        
-        // Get a coords builder, but scrap all coords info.
-        Coords.CoordsBuilder c_builder = disk_store.getAnyImage().getCoords().copy();
-        c_builder.channel(0).stagePosition(0).time(0).z(0);
         
         // Create a sorted list (of old Coord values) so we can load the images
         // in a smart order.
@@ -273,7 +253,7 @@ class TiffParser {
             m_builder.imageNumber((long) i).elapsedTimeMs((double) i*frameLengthMs);
             // Log the process
             if (i%100==0) {
-                app.logs().logDebugMessage(String.format("Loaded %d images.",i));
+                app.logs().logDebugMessage(String.format("Loaded %d images from MM tiff stack.",i));
             }
             // Increment progressbar
             SwingUtilities.invokeLater( new Runnable() {
@@ -283,11 +263,124 @@ class TiffParser {
             });
 
         }
+    }
+    
+    public final void loadGeneralTiff(File file) {
+        // Open the tiff via ImageJ
+        app.logs().logMessage("Trying to open general tiff.");
+        Opener o = new Opener();
+        ImagePlus win = o.openTiff(file.getParent().concat("\\"),file.getName());
+        ImageStack stack = win.getImageStack();
+        // Build up metadata from scratch
+        m_builder = app.data().getMetadataBuilder();
+        m_builder.imageNumber(0l).camera("ImageInjector").exposureMs(1.0d)
+                .xPositionUm(0.0).yPositionUm(0.0).zPositionUm(0.0)
+                .positionName("Injection");
+        
+        // 
+        int width = stack.getWidth();
+        int height = stack.getHeight();
+        int bytesPerPixel;
+        if(stack.getPixels(win.getSlice()) instanceof short[]) {
+            app.logs().showMessage("Array is instance of short[]");
+            app.logs().showMessage(stack.getPixels(win.getSlice()).getClass().getName());
+            bytesPerPixel = 2;
+        } else {
+            throw new ArrayStoreException("Wrong image bit depth.");
+        }
+        
+        // Set up progressbar
+        window.setMaximum(stack.getSize());
+        window.setProgress(0);
         SwingUtilities.invokeLater( new Runnable() {
+            @Override
+            public void run() {
+                window.setVisible(true);
+            }
+        });
+        
+        Image ram_image;
+        Coords coords; Metadata metadata;
+        for (int i=1; i<=stack.getSize(); i++) {
+            // get immutable types from builders
+            coords = c_builder.build();
+            metadata = m_builder.build();
+            
+            ram_image = app.data().createImage(stack.getPixels(i), width, height, bytesPerPixel, 1, coords, metadata);
+            // put the image into new datastore
+            try {
+                store.putImage(ram_image);
+            } catch (DatastoreFrozenException ex) {
+                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (DatastoreRewriteException ex) {
+                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalArgumentException ex) {
+                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            // put the relevant coords into an ordered array
+            coords_list.add(coords);
+            
+            // Prepare builders for next image by incrementing values
+            c_builder.offset("time", (int) frameLengthMs);
+            m_builder.imageNumber((long) i).elapsedTimeMs((double) i*frameLengthMs);
+            // Log the process
+            if (i%100==0) {
+                app.logs().logDebugMessage(String.format("Loaded %d images from general tiff stack.",i));
+            }
+            // Increment progressbar
+            SwingUtilities.invokeLater( new Runnable() {
                 public void run() {
-                    window.dispose();                
+                    window.increment();
                 }
             });
+        }
+    }
+    
+    
+    public final void loadScrubbedData(File file, boolean isMMtiff) {
+        /**
+         * Loads data from a .tiff file from disk, cleans  the Coords and
+         * Metadata information, and loads it up into a RAM datastore.
+         */
+        
+        app.logs().logDebugMessage(String.format(
+            "Parsing .tiff file: %s", file.getAbsolutePath()));
+        
+        // Containers for cleaned up final data
+        store = app.data().createRAMDatastore();
+        coords_list = new SortedCoordsList();
+        
+        // Get a coords builder, but scrap all coords info.
+        c_builder = app.data().getCoordsBuilder();
+        c_builder.channel(0).stagePosition(0).time(0).z(0);
+        
+        // Get metadata from .tiff file, but scrub the position and other information
+        // which doesn't pertain to actual image.
+        
+        
+        Datastore disk_store = null;
+        if (isMMtiff){
+            try {
+                loadMMtiff(file);
+            } catch (IOException ex) {
+                Logger.getLogger(TiffParser.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            try {
+                loadGeneralTiff(file);
+            } catch (Exception ex2) {
+                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex2);
+                app.logs().showError("Loading of .tiff file failed.");
+                return;
+            }
+        }
+        tiff_file = file;
+
+        SwingUtilities.invokeLater( new Runnable() {
+            public void run() {
+                window.dispose();                
+            }
+        });
     }
     
     public Datastore getDatastore() {

@@ -39,7 +39,11 @@
                               <EmptySpace max="-2" attributes="0"/>
                               <Component id="frames_per_second" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <Component id="choose_file_button" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="choose_file_button" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Component id="isMMtiff" min="-2" max="-2" attributes="0"/>
+                          </Group>
                       </Group>
                   </Group>
                   <Group type="102" alignment="0" attributes="0">
@@ -60,7 +64,10 @@
                   <Component id="frames_per_second" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
-              <Component id="choose_file_button" min="-2" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="choose_file_button" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="isMMtiff" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
               <EmptySpace pref="9" max="32767" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -112,6 +119,15 @@
     <Component class="javax.swing.JLabel" name="label_filepath">
       <Properties>
         <Property name="text" type="java.lang.String" value="&lt;none&gt;"/>
+        <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[100, 14]"/>
+        </Property>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JCheckBox" name="isMMtiff">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="is Micromanager Tiff"/>
+        <Property name="toolTipText" type="java.lang.String" value=""/>
       </Properties>
     </Component>
   </SubComponents>
