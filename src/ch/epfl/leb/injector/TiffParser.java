@@ -136,8 +136,6 @@ public class TiffParser {
         int height = stack.getHeight();
         int bytesPerPixel;
         if(stack.getPixels(win.getSlice()) instanceof short[]) {
-            app.logs().showMessage("Array is instance of short[]");
-            app.logs().showMessage(stack.getPixels(win.getSlice()).getClass().getName());
             bytesPerPixel = 2;
         } else {
             throw new ArrayStoreException("Wrong image bit depth.");
