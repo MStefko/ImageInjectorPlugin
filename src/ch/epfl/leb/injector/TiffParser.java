@@ -41,7 +41,8 @@ import org.micromanager.data.Metadata;
  */
 public class TiffParser {
     private BusyIndicatorWindow window = new BusyIndicatorWindow(null, true);
-    private Studio app;
+    private final InjectorSetupWindow setup_window;
+    private final Studio app;
     private File tiff_file;
     private Datastore store;
     private SortedCoordsList coords_list;
@@ -49,24 +50,14 @@ public class TiffParser {
     private Coords.CoordsBuilder c_builder;
     private Metadata.MetadataBuilder m_builder;
     
-    public TiffParser(Studio studio, long frameLengthMs) {
+    public TiffParser(Studio studio, long frameLengthMs, InjectorSetupWindow setup_window) {
         this.frameLengthMs = frameLengthMs;
         app = studio;
+        this.setup_window = setup_window;
     }
     
-    public final void loadMMtiff(File file) throws IOException {
-        app.logs().logMessage("Trying to open MM tiff.");
-        Datastore disk_store = app.data().loadData(file.getAbsolutePath(), true);
-        m_builder = disk_store.getAnyImage().getMetadata().copy();
-        m_builder.imageNumber(0l).camera("ImageInjector").exposureMs(1.0d)
-                .xPositionUm(0.0).yPositionUm(0.0).zPositionUm(0.0)
-                .positionName("Injection");
-        
-        // Create a sorted list (of old Coord values) so we can load the images
-        // in a smart order.
-        final SortedCoordsList c_list = new SortedCoordsList(disk_store.getUnorderedImageCoords());
+    public final void loadGeneralTiff(File file) {
         // Set up progressbar
-        window.setMaximum(c_list.size());
         window.setProgress(0);
         SwingUtilities.invokeLater( new Runnable() {
             @Override
@@ -74,52 +65,6 @@ public class TiffParser {
                 window.setVisible(true);
             }
         });
-
-        // Load the images one by one, replace Coords and Metadata with new
-        // values, and put them into final containers.
-        Image disk_image;
-        Image ram_image;
-        Coords coords; Metadata metadata;
-        // Iterate over ordered list
-        for (int i=0; i<c_list.size(); i++) {
-            // get immutable types from builders
-            coords = c_builder.build();
-            metadata = m_builder.build();
-            
-            // get old image, and make a copy with new coords and metadata
-            disk_image = disk_store.getImage(c_list.get(i));
-            ram_image = disk_image.copyWith(coords, metadata);
-            // put the image into new datastore
-            try {
-                store.putImage(ram_image);
-            } catch (DatastoreFrozenException ex) {
-                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (DatastoreRewriteException ex) {
-                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalArgumentException ex) {
-                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            // put the relevant coords into an ordered array
-            coords_list.add(coords);
-            
-            // Prepare builders for next image by incrementing values
-            c_builder.offset("time", (int) frameLengthMs);
-            m_builder.imageNumber((long) i).elapsedTimeMs((double) i*frameLengthMs);
-            // Log the process
-            if (i%100==0) {
-                app.logs().logDebugMessage(String.format("Loaded %d images from MM tiff stack.",i));
-            }
-            // Increment progressbar
-            SwingUtilities.invokeLater( new Runnable() {
-                public void run() {
-                    window.increment();
-                }
-            });
-
-        }
-    }
-    
-    public final void loadGeneralTiff(File file) {
         // Open the tiff via ImageJ
         app.logs().logMessage("Trying to open general tiff.");
         Opener o = new Opener();
@@ -141,16 +86,8 @@ public class TiffParser {
             throw new ArrayStoreException("Wrong image bit depth.");
         }
         
-        // Set up progressbar
-        window.setMaximum(stack.getSize());
-        window.setProgress(0);
-        SwingUtilities.invokeLater( new Runnable() {
-            @Override
-            public void run() {
-                window.setVisible(true);
-            }
-        });
         
+        window.setMaximum(stack.getSize());
         Image ram_image;
         Coords coords; Metadata metadata;
         for (int i=1; i<=stack.getSize(); i++) {
@@ -186,10 +123,17 @@ public class TiffParser {
                 }
             });
         }
+        if (setup_window != null) {
+            SwingUtilities.invokeLater( new Runnable() {
+                public void run() {
+                    setup_window.setTiffLoaded(true);
+                }
+            });
+        }
     }
     
     
-    public final void loadScrubbedData(File file, boolean isMMtiff) {
+    public final void loadScrubbedData(File file) {
         /**
          * Loads data from a .tiff file from disk, cleans  the Coords and
          * Metadata information, and loads it up into a RAM datastore.
@@ -211,20 +155,21 @@ public class TiffParser {
         
         
         Datastore disk_store = null;
-        if (isMMtiff){
-            try {
-                loadMMtiff(file);
-            } catch (IOException ex) {
-                Logger.getLogger(TiffParser.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        } else {
-            try {
-                loadGeneralTiff(file);
-            } catch (Exception ex2) {
-                Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex2);
-                app.logs().showError("Loading of .tiff file failed.");
-                return;
-            }
+        try {
+            loadGeneralTiff(file);
+        } catch (Exception ex2) {
+            Logger.getLogger(ImageStreamer.class.getName()).log(Level.SEVERE, null, ex2);
+            app.logs().showError("Loading of .tiff file failed.");
+            store = null;
+            coords_list = null;
+            SwingUtilities.invokeLater( new Runnable() {
+                public void run() {
+                    window.dispose();
+                    setup_window.setTiffLoaded(false);
+                }
+            });
+
+            return;
         }
         tiff_file = file;
 

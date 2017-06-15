@@ -19,6 +19,7 @@
  */
 package ch.epfl.leb.injector;
 
+import java.awt.Color;
 import javax.swing.JFileChooser;
 import java.io.File;
 import org.micromanager.PropertyMap;
@@ -37,6 +38,7 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
     PropertyMap.PropertyMapBuilder builder;
     InjectorConfigurator configurator;
     File tiff_file;
+    
     public InjectorSetupWindow(java.awt.Frame parent, boolean modal, 
             InjectorConfigurator configurator) {
         super(parent, modal);
@@ -63,27 +65,28 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
         choose_file_button = new javax.swing.JButton();
         jLabel2 = new javax.swing.JLabel();
         label_filepath = new javax.swing.JLabel();
-        isMMtiff = new javax.swing.JCheckBox();
+        l_is_tiff_loaded = new javax.swing.JLabel();
+        b_clear = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
         jLabel1.setText("Frames per second:");
 
         frames_per_second.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
-        frames_per_second.setText("50");
+        frames_per_second.setText("100");
         frames_per_second.setPreferredSize(new java.awt.Dimension(30, 20));
 
         OK_button.setText("OK");
-        OK_button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                OK_buttonMouseClicked(evt);
+        OK_button.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                OK_buttonActionPerformed(evt);
             }
         });
 
         choose_file_button.setText("Choose file...");
-        choose_file_button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                choose_file_buttonMouseClicked(evt);
+        choose_file_button.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                choose_file_buttonActionPerformed(evt);
             }
         });
 
@@ -92,35 +95,46 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
         label_filepath.setText("<none>");
         label_filepath.setMaximumSize(new java.awt.Dimension(100, 14));
 
-        isMMtiff.setText("is Micromanager Tiff");
-        isMMtiff.setToolTipText("");
+        l_is_tiff_loaded.setForeground(new java.awt.Color(153, 0, 51));
+        l_is_tiff_loaded.setText("Tiff not loaded");
+
+        b_clear.setText("Clear");
+        b_clear.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                b_clearActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jLabel2)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(label_filepath, javax.swing.GroupLayout.PREFERRED_SIZE, 208, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(jLabel1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(frames_per_second, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(choose_file_button)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(jLabel1)
+                                .addComponent(jLabel2)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(frames_per_second, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(choose_file_button)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(isMMtiff))))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(97, 97, 97)
-                        .addComponent(OK_button)))
-                .addContainerGap(86, Short.MAX_VALUE))
+                                .addComponent(label_filepath, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(0, 10, Short.MAX_VALUE)))
+                .addContainerGap(20, Short.MAX_VALUE))
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(l_is_tiff_loaded)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(b_clear)
+                .addContainerGap())
+            .addGroup(layout.createSequentialGroup()
+                .addGap(72, 72, 72)
+                .addComponent(OK_button)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -129,23 +143,25 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
                     .addComponent(frames_per_second, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(choose_file_button)
-                    .addComponent(isMMtiff))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 9, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(choose_file_button)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
                     .addComponent(label_filepath, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(b_clear)
+                    .addComponent(l_is_tiff_loaded))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 30, Short.MAX_VALUE)
                 .addComponent(OK_button)
-                .addGap(25, 25, 25))
+                .addContainerGap())
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void OK_buttonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_OK_buttonMouseClicked
+    private void OK_buttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_OK_buttonActionPerformed
         // Load the FPS value into ImageStreamer
         long FPS;
         try {
@@ -158,11 +174,11 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
         // Set updated PropertyMap in configurator
         configurator.setPropertyMap(builder.build());
         // Hide the GUI and load the new .tiff file into ImageStreamer
+        configurator.context.streamer.setFile(tiff_file, this);
         this.setVisible(false);
-        configurator.context.streamer.setFile(tiff_file, isMMtiff.isSelected());
-    }//GEN-LAST:event_OK_buttonMouseClicked
+    }//GEN-LAST:event_OK_buttonActionPerformed
 
-    private void choose_file_buttonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_choose_file_buttonMouseClicked
+    private void choose_file_buttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_choose_file_buttonActionPerformed
         // File chooser dialog
         JFileChooser fc = new JFileChooser();
         int returnVal = fc.showOpenDialog(choose_file_button);
@@ -171,60 +187,34 @@ public class InjectorSetupWindow extends javax.swing.JDialog {
         }
         // Set the selected file and show in label
         tiff_file = fc.getSelectedFile();
-        label_filepath.setText(tiff_file.getAbsolutePath());
-        
-    }//GEN-LAST:event_choose_file_buttonMouseClicked
+        label_filepath.setText(tiff_file.getName());
+    }//GEN-LAST:event_choose_file_buttonActionPerformed
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(InjectorSetupWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(InjectorSetupWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(InjectorSetupWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(InjectorSetupWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+    private void b_clearActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_b_clearActionPerformed
+        setTiffLoaded(false);
+        label_filepath.setText("<none>");
+        tiff_file = null;
+        configurator.context.streamer.setFile(null, null);
+    }//GEN-LAST:event_b_clearActionPerformed
+    
+    public void setTiffLoaded(boolean isLoaded) {
+        if (isLoaded) {
+            l_is_tiff_loaded.setText("Tiff loaded");
+            l_is_tiff_loaded.setForeground(Color.decode("0x006600"));
+        } else {
+            l_is_tiff_loaded.setText("Tiff not loaded");
+            l_is_tiff_loaded.setForeground(Color.decode("0x990033"));
         }
-        //</editor-fold>
-        //</editor-fold>
-
-        /* Create and display the dialog */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                InjectorSetupWindow dialog = new InjectorSetupWindow(new javax.swing.JFrame(), true, null);
-                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-                    @Override
-                    public void windowClosing(java.awt.event.WindowEvent e) {
-                        System.exit(0);
-                    }
-                });
-                dialog.setVisible(true);
-            }
-        });
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton OK_button;
+    private javax.swing.JButton b_clear;
     private javax.swing.JButton choose_file_button;
     private javax.swing.JTextField frames_per_second;
-    private javax.swing.JCheckBox isMMtiff;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel l_is_tiff_loaded;
     private javax.swing.JLabel label_filepath;
     // End of variables declaration//GEN-END:variables
 }

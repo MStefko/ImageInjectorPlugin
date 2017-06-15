@@ -44,11 +44,11 @@ public class ImageStreamer {
     public ImageStreamer(Studio studio) {
         // Initiate with no file and default FPS
         app = studio;
-        setFile(null, false);
-        setFPS(10);
+        setFile(null, null);
+        setFPS(100);
     }
     
-    public final void setFile(final File file, final boolean isMMtiff) {
+    public final void setFile(final File file, InjectorSetupWindow setup_window) {
         // The file pointers can be null.
         String new_path = ""; String old_path = "";
         try {
@@ -75,13 +75,14 @@ public class ImageStreamer {
             coords_list = null;
             System.gc();
             
-            final TiffParser parser = new TiffParser(app, frameLengthMs);
+            final TiffParser parser = new TiffParser(app, frameLengthMs, setup_window);
             new Thread(new Runnable(){
                 @Override
                 public void run() {
-                    parser.loadScrubbedData(file, isMMtiff);
+                    parser.loadScrubbedData(file);
                     store = parser.getDatastore();
                     coords_list = parser.getCoordsList();
+                    tiff_file = file;
                 }
             }).start();
         }

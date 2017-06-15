@@ -40,7 +40,7 @@ public class InjectorConfigurator implements ProcessorConfigurator {
         PropertyMap.PropertyMapBuilder builder = pm.copy();
         builder.putInt("framesPerSecond", 15);
         setPropertyMap(builder.build());
-        frame = new InjectorSetupWindow(new javax.swing.JFrame(), true, this);
+        frame = new InjectorSetupWindow(new javax.swing.JFrame(), false, this);
     }
     
     public final void setPropertyMap(PropertyMap pm) {
