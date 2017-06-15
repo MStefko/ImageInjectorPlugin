@@ -11,4 +11,4 @@ Copy `ImageInjector.jar` from one of the [releases](https://github.com/MStefko/I
 
 ## Usage
 ImageInjector uses the MicroManager2.0 [ProcessorPlugin](https://micro-manager.org/wiki/Version_2.0_Plugins#ProcessorPlugin) interface. 
-Just select a `.tif` file you wish to inject and press `OK` button to load. Make sure to reopen the MicroManager Live view after tge `.tif` file is loaded.
+Just select a `.tif` file you wish to inject and press `OK` button to load. Make sure to reopen the MicroManager Live view after the `.tif` file is loaded.
