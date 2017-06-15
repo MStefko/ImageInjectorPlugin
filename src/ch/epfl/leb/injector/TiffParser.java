@@ -68,7 +68,7 @@ public class TiffParser {
         // Open the tiff via ImageJ
         app.logs().logMessage("Trying to open general tiff.");
         Opener o = new Opener();
-        ImagePlus win = o.openTiff(file.getParent().concat("\\"),file.getName());
+        ImagePlus win = o.openTiff(file.getParent(),file.getName());
         ImageStack stack = win.getImageStack();
         // Build up metadata from scratch
         m_builder = app.data().getMetadataBuilder();
