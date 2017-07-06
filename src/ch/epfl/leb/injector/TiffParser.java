@@ -23,7 +23,10 @@ import ij.ImagePlus;
 import ij.ImageStack;
 import ij.io.Opener;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
@@ -56,7 +59,7 @@ public class TiffParser {
         this.setup_window = setup_window;
     }
     
-    public final void loadGeneralTiff(File file) {
+    public final void loadGeneralTiff(File file) throws FileNotFoundException, IOException {
         // Set up progressbar
         window.setProgress(0);
         SwingUtilities.invokeLater( new Runnable() {
@@ -67,8 +70,15 @@ public class TiffParser {
         });
         // Open the tiff via ImageJ
         app.logs().logMessage("Trying to open general tiff.");
-        Opener o = new Opener();
-        ImagePlus win = o.openTiff(file.getParent(),file.getName());
+        InputStream input_stream = new FileInputStream(file);
+        ImagePlus win;
+        try {
+            Opener o = new Opener();
+            win = o.openTiff(input_stream,"InjectorStack");
+        } finally {
+            input_stream.close();
+        }
+
         ImageStack stack = win.getImageStack();
         // Build up metadata from scratch
         m_builder = app.data().getMetadataBuilder();
